@@ -1,33 +1,33 @@
 {
     "type": "filament",
-    "filament_id": "GFL99",
+    "filament_id": "GFA99",
     "setting_id": "GFSA04",
     "from": "User",
     "is_custom_defined": "0",
     "instantiation": "true",
     "version": "1.3.2509.03",
-    "inherits": "Original Anycubic PLA @acbase",
-    "name": "Anycubic PLA @Anycubic Kobra S1 0.8 nozzle",
+    "inherits": "",
+    "name": "Anycubic ASA @Anycubic Kobra S1 0.8 nozzle",
     "filament_settings_id": [
-        "Anycubic PLA @Anycubic Kobra S1 0.8 nozzle"
+        "Anycubic ASA @Anycubic Kobra S1 0.8 nozzle"
     ],
     "filament_vendor": [
         "Anycubic"
     ],
     "filament_type": [
-        "PLA"
+        "ASA"
     ],
     "filament_flow_ratio": [
-        "0.98"
+        "0.95"
     ],
     "filament_max_volumetric_speed": [
-        "12"
+        "15"
     ],
     "nozzle_temperature": [
-        "220"
+        "260"
     ],
     "activate_air_filtration": [
-        "1"
+        "0"
     ],
     "activate_chamber_temp_control": [
         "0"
@@ -45,15 +45,16 @@
         "0"
     ],
     "additional_cooling_fan_speed": [
-        "60"
+        "0"
     ],
     "chamber_temperature": [
         "0"
     ],
     "close_fan_the_first_x_layers": [
-        "1"
+        "5"
     ],
-    "compatible_printers_condition": "printer_model==\\\"Anycubic Kobra S1\\\" and nozzle_diameter[0]==0.8",    "compatible_prints": [],
+    "compatible_printers_condition": "printer_model==\\\"Anycubic Kobra S1\\\" and nozzle_diameter[0]==0.8",
+    "compatible_prints": [],
     "compatible_prints_condition": "",
     "complete_print_exhaust_fan_speed": [
         "80"
@@ -86,13 +87,13 @@
         "0"
     ],
     "fan_cooling_layer_time": [
-        "100"
+        "35"
     ],
     "fan_max_speed": [
-        "100"
+        "80"
     ],
     "fan_min_speed": [
-        "100"
+        "10"
     ],
     "filament_cooling_final_speed": [
         "0"
@@ -221,10 +222,10 @@
         "0"
     ],
     "hot_plate_temp": [
-        "55"
+        "100"
     ],
     "hot_plate_temp_initial_layer": [
-        "55"
+        "100"
     ],
     "idle_temperature": [
         "0"
@@ -233,25 +234,25 @@
         "100"
     ],
     "nozzle_temperature_initial_layer": [
-        "220"
+        "260"
     ],
     "nozzle_temperature_range_high": [
-        "240"
+        "280"
     ],
     "nozzle_temperature_range_low": [
-        "190"
+        "240"
     ],
     "overhang_fan_speed": [
-        "100"
+        "80"
     ],
     "overhang_fan_threshold": [
-        "50%"
+        "25%"
     ],
     "pellet_flow_coefficient": [
         "0.4157"
     ],
     "pressure_advance": [
-        "0.05"
+        "0.03"
     ],
     "reduce_fan_stop_start_freq": [
         "1"
@@ -263,7 +264,7 @@
         "1"
     ],
     "slow_down_layer_time": [
-        "8"
+        "3"
     ],
     "slow_down_min_speed": [
         "20"
@@ -287,9 +288,9 @@
         "40"
     ],
     "textured_plate_temp": [
-        "55"
+        "100"
     ],
     "textured_plate_temp_initial_layer": [
-        "55"
+        "100"
     ]
 }

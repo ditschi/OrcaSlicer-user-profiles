@@ -1,77 +1,160 @@
-# OrcaSlicer Printer Profiles for Anycubic Kobra S1 Combo
+# OrcaSlicer Printer Profiles for Anycubic Printers
 
 This repo contains Profiles for the Anycubic Kobra S1 Combo. The profiles were extracted from AnycubicSlicerNext and adapted to be used as user profiles. Also some "Optimized" profiles were created, for better and faster performance.
 
-## Extracting form AnycubicSlicerNext  to OrcaSlicer
+The profiles from this repo can simply be copied to `~/.config/OrcaSlicer/user/default/` to add them to OrcaSlicer
+
+Using the [python script](./convert_slicer_profiles.py) can be used to migrate profiles for all other printers from AnycubicSlicerNext as well. Check the [detailed documentation](#automated-conversion-with-python-script) for more details.
+
+## Extracting form AnycubicSlicerNext to OrcaSlicer
 
 It is  possible to get the `filament`, `machine` and `process` configuration from the AnycubicSlicerNext installation.
 
-Prerequisite: AnycubicSlicerNext and OrcaSlicer is installed and was startet at least once (so the tool creates the needed files in the user profile).
+Prerequisite: AnycubicSlicerNext and OrcaSlicer is installed and was started at least once (so the tool creates the needed files in the user profile).
 
-You can fine the original files from AnycubicSlicerNext in  `.copy_from_AnycubicSlicerNext` sub-folders for reference or to compare. As OrcaSlicer will sort the json files when changing a profile the a `sorted_*.json` was added to be able to compare.
+When manually copying the files to the OrcaSlicer user profiles many adaptions  were needed so a script was created to perform the required step so that the profiles are actually visible in OrcaSlicer.
 
-Steps:
+### Automated Conversion with Python Script
 
-1. locate the `filament`, `machine` and `process` folders in `~/.config/AnycubicSlicerNext/system/Anycubic`
-2. Search for the files for your printer in one of the folders
-3. copy them to corresponding `machine` and `process` folder of the OrcaSlicer user profile in `~/.config/OrcaSlicer/user/default/`
-4. Optional: Rename files and prepend "Original" and prepare "optimized"
-    - Prepare Optimized Profiles for doing custom adaptions with possibility to compare to original
-           `for file in Anycubic*.json; do cp "$file" "Optimized $file"; done`
-    - Rename Original `for file in Anycubic*.json; do mv "$file" "Original $file"; done`
-5. adapt the json files so they are accepted
-    - json files in `filament`, `machine` and `process`
-        - ensure `"is_custom_defined": "0"` is set
-        - ensure `"instantiation": "true",` is set
-        - If files were renamed: ensure to update `"inherits":` values to match the new filenames.
-    - json files in `filament`, and `process`
-        - For better comatibilety:
-          - remove `"compatible_printers":` key value pair to apply profiles to all matching printers
-          - use `"compatible_printers_condition": "printer_model==\\\"Anycubic Kobra S1\\\" and nozzle_diameter[0]==0.XXX",` while setting the matching nozzle diameter based on the profile filename
-    - json files in `filament`
-      - ensure all `Anycubic PLA @Anycubic Kobra S1 * nozzle.json` files  contain `"inherits": "Anycubic PLA @acbase",`
-    - json files in `machine`
-        - Optional: For `machines` you can choose to set `"support_multi_bed_types": "1"`
-    - json files in  `process`
-        - ensure to remove values for `"inherits": "fdm_process_common"` to `"inherits": ""`
-        - as inherits does not work as expected you need to combine user profiles that inherit other user profiles. When writing this, 0.6 and 0.8 nozzle files were affected. A script can be used to do this: [./process/fix_inherits.sh](./process/fix_inherits.sh)
+The `convert_slicer_profiles.py` script automates the entire conversion process from AnycubicSlicerNext to OrcaSlicer format.
 
-### Generic logic
+#### Quick Start Examples
 
-A python script that has two basic modes --interactive where the user is prompted or normal (with arguments only)
+**Convert Original Profiles (Kobra S1):**
+```bash
+./convert_slicer_profiles.py --filter '**/*S1*'
+```
 
-Inputs/Questions:
+**Convert Optimized Profiles (with machine limits and G-code improvements):**
+```bash
+./convert_slicer_profiles.py --filter 'machine/*S1*' --prefix 'Optimized ' --config ./profile_convert_config_optimize.yml
+```
 
-source path (~/.config/AnycubicSlicerNext/system/Anycubic/)
-output path (~/.config/OrcaSlicer/user/default/)
-prefix -- Prefix  copied filename (Original)
-postfix (None)
-filter (**/*) -- glob  the user can use to filter input to be copied from source. (e.g only process */*S1* or machine/*)
-debug
+**Convert Optimized Profiles (with machine limits and G-code improvements):**
+**Interactive Mode (guided prompts):**
+```bash
+./convert_slicer_profiles.py --interactive
+```
 
-Logic:
+**Print all commandline arguments:**
+```bash
+./convert_slicer_profiles.py --help
+```
 
-Every file in source that matches the glob is processed.
-In case we have a json file the content is read, analyzed and updated.
-Files with "type": "machine_model" are skipped.
-If content contains `"inherits":` value
- - find file with <value>.json in the same folder than the current file
- - change the value to ""
- - merge the two json while overwriting the values from the inherited file with existing values
- - if the included file also contains `"inherits":` value the same logic applies recursively
+#### Prerequisites
 
+- Python 3.7+
+- PyYAML (for config file support): `pip install pyyaml`
 
-ensure `"is_custom_defined": "0"` is set
-ensure `"instantiation": "true",` is set
+#### What the Script Does
 
-remove `"compatible_printers":` key value pair
-set `"compatible_printers_condition": "printer_model==\\\"Anycubic Kobra S1\\\" and nozzle_diameter[0]==<diameter>",` while setting the matching nozzle diameter extracted from the profile filename  (xxxx <diameter> nozzle.json)
-If key "support_multi_bed_types" exists  set the value to 1
+1. **File Discovery & Filtering**
+   - Scans source directory for files matching the glob pattern
+   - Supports filtering by printer model (e.g., `**/*S1*` for Kobra S1 only)
 
-The final content is written to the output location while preserving the relative paths of the files to source. The destination filename is the filename from source combined with te specified pre/postfix
+2. **Inheritance Resolution** (Recursive, up to 5 levels)
+   - Locates and loads inherited profile files (`"inherits": "base_profile"`)
+   - Merges inherited values with current profile (current values take precedence)
+   - Flattens the inheritance chain by setting `"inherits": ""`
+   - Warns if inherited files are missing or maximum depth is exceeded
 
+3. **Required Field Transformations**
+   - Sets `"is_custom_defined": "0"` (marks as user profile)
+   - Sets `"instantiation": "true"` (enables profile instantiation)
+   - Sets `"from": "User"` (indicates custom profile source)
+   - Removes `"compatible_printers"` array (improves compatibility)
+   - Updates `"compatible_printers_condition"` (if field exists and is empty):
+     - Extracts printer name from filename (e.g., "Anycubic Kobra S1")
+     - Extracts nozzle diameter from filename (e.g., `0.4 nozzle` → `0.4`)
+     - Sets condition: `printer_model=="<name>" and nozzle_diameter[0]==<diameter>`
+   - Sets `"support_multi_bed_types": "1"` (if field exists)
 
-The script shall use logging and Path argparse.  Follow the python best practices for clean code
+4. **Config-Based Value Overrides** (Optional)
+   - Applies JSON value overwrites from YAML config file
+   - Supports conditional rules based on:
+     - Filename patterns (e.g., only "Optimized" profiles)
+     - JSON field values (e.g., `type: "machine"`)
+   - Can set G-code fields, machine limits, and nozzle-specific parameters
+
+5. **Output Generation**
+   - Preserves relative directory structure from source
+   - Applies prefix/postfix to filenames (e.g., `Original <filename>.json`)
+   - Writes formatted JSON with optional key sorting
+   - Skips existing files unless `--overwrite` is specified
+
+#### Configuration Files
+
+**`profile_convert_config.yml`** - Default configuration for "Original" profiles:
+- Sets G-code fixes for parser compatibility
+- Minimal changes to preserve original behavior
+
+**`profile_convert_config_optimize.yml`** - Configuration for "Optimized" profiles:
+- Applies all G-code improvements (start, end, filament change)
+- Sets optimized machine limits (acceleration, jerk, speed)
+- Configures nozzle-specific parameters (retraction, wipe distance)
+- All rules enabled by default for Kobra S1
+
+#### Common Use Cases
+
+**Process only specific profile types:**
+```bash
+# Only machine profiles
+./convert_slicer_profiles.py --filter 'machine/*'
+
+# Only process profiles
+./convert_slicer_profiles.py --filter 'process/*'
+
+# Only filament profiles
+./convert_slicer_profiles.py --filter 'filament/*'
+```
+
+**Create both Original and Optimized profiles:**
+```bash
+# First: Create Original profiles
+./convert_slicer_profiles.py --filter '**/*S1*' --prefix 'Original '
+
+# Second: Create Optimized profiles
+./convert_slicer_profiles.py --filter '**/*S1*' --prefix 'Optimized ' --config ./profile_convert_config_optimize.yml
+```
+
+**Debug mode for troubleshooting:**
+```bash
+./convert_slicer_profiles.py --filter '**/*S1*' --debug
+```
+
+#### How Config-Based Overrides Work
+
+The YAML configuration allows you to define rules that overwrite specific JSON fields based on conditions:
+
+```yaml
+json_value_overwrite:
+  - name: "machine_max_acceleration_e"  # JSON key to overwrite
+    enabled: true                         # Enable this rule
+    value: ["20000", "20000"]            # New value (supports strings, numbers, arrays, objects)
+    conditions:                           # Optional conditions (AND logic)
+      - type: "filename_contains"         # Condition type
+        pattern: "Kobra S1"               # Pattern to match in filename
+      - type: "json_value"                # Check JSON field value
+        key: "type"                       # JSON key to check
+        value: "machine"                  # Expected value
+```
+
+**Key Features:**
+
+- Only overwrites if the JSON key already exists in the file
+- Multiple conditions use AND logic (all must match)
+- Empty conditions list applies to all files
+- Supports complex values (strings, arrays, objects, multiline text)
+
+#### Error Handling & Logging
+
+The script provides comprehensive logging:
+- **INFO**: Progress updates, files processed, summary
+- **WARNING**: Missing inherited files, existing output files, missing nozzle diameters
+- **ERROR**: Invalid JSON, file I/O errors, processing failures
+- **DEBUG**: Detailed transformation steps, condition checks, field updates
+
+Enable debug logging with `--debug` to troubleshoot issues.
 
 ## Issue: The device cannot parse the file
 
@@ -107,7 +190,6 @@ Flow-related parameters adjusted per nozzle size:
 
 **Key Principle:** Machine limits define hardware capabilities (same for all). Nozzle-specific settings handle flow characteristics (vary by diameter).
 
-
 ## Improved machine G-code
 
 ### Machine Start G-code
@@ -118,7 +200,6 @@ __This fixes [The device cannot parse the file](#issue-the-device-cannot-parse-t
 - Added machine limit g-codes
 
 This was applied in all files (Original and Optimized)
-
 
 ```ini
 

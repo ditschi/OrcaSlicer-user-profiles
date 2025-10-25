@@ -1,0 +1,103 @@
+# Profile Converter Configuration
+# This file contains default values and JSON overwrite rules for profile conversion
+
+# Default argument values
+# These can be overridden by command-line arguments
+defaults:
+  source: "~/.config/AnycubicSlicerNext/system/Anycubic/"
+  output: "~/.config/OrcaSlicer/user/default/"
+  prefix: "Original "
+  postfix: ""
+  filter: "**/*"
+  overwrite: false
+  debug: false
+
+# JSON value overwrite rules
+# These rules allow you to overwrite specific JSON keys based on conditions
+# Each rule has:
+#   - name: The JSON key to overwrite
+#   - enabled: Whether this rule is active (true/false)
+#   - value: The value to set (can be multiline string using | for G-code)
+#   - conditions: (optional) List of conditions that must ALL match (AND logic)
+#       - type: "filename_contains" - Check if filename contains a pattern
+#         pattern: String to search for in filename
+#       - type: "json_value" - Check if a JSON key has a specific value
+#         key: The JSON key to check
+#         value: The expected value (exact string match)
+
+json_value_overwrite:
+  # ========================================
+  # Global Settings (Applied to All Profiles)
+  # ========================================
+
+  # Set the "from" field to "User" for all profiles
+  - name: "from"
+    enabled: true
+    value: "User"
+    conditions: []  # Apply to all files
+
+  # ========================================
+  # G-code Overrides
+  # ========================================
+
+  # Machine Start G-code - Applied to all machine profiles
+  - name: "machine_start_gcode"
+    enabled: true
+    value: |
+      ; ================================
+      ; Begin of Machine Start G-code
+      ; ================================
+      ; Added as contained in AnycubicSlicerNext g-code to fix issues with error: The device cannot parse the file
+      C X20000 Y20000 Z1000 E20000 ; Set maximum accelerations (mm/sec^2)
+      M203 X600 Y600 Z15 E600 ; Set maximum feedrates (mm/sec) (mm/sec)
+      M204 P20000 R20000 T20000 ; Set Starting Acceleration (mm/sec^2)
+      M205 X15.00 Y15.00 Z15.00 E15.00 ; Set jerk limits (mm/sec)
+      M106 S0 ; Turn off part cooling fan (Fan 0)
+      M106 P2 S0 ; Turn off auxiliary fan (Fan 2)
+
+      ; start of original Machine Start G-code
+      G9111 bedTemp=[first_layer_bed_temperature] extruderTemp=[first_layer_temperature[initial_tool]]
+      M117 Clear LCD display message
+      ; end of original Machine Start G-code
+      ; ================================
+      ; End of Machine Start G-code
+      ; ================================
+
+
+  # Machine End G-code - Applied to all machine profiles
+  - name: "machine_end_gcode"
+    enabled: true
+    value: |
+      ; ================================
+      ; Begin of Machine End G-code
+      ; ================================
+      G92 E0
+      G1 E-2 F3000
+      {if max_layer_z < max_print_height-1}G1 Z{z_offset+min(max_layer_z+2, max_print_height)} F900 ; Move print head further up{endif}
+      G1 F12000; present print
+      G1 X44;  throw_position_x
+      G1 Y270; throw_position_y
+      M140 S0 ; turn off heatbed
+      M104 S0 ; turn off temperature
+      M106 P1 S0 ; turn off fan
+      M106 P2 S0
+      M106 P3 S0
+      M84; disable motors
+      ; disable stepper motors
+      ; ================================
+      ; End of Machine End G-code
+      ; ================================
+
+  # ========================================
+  # Example: Custom rules
+  # ========================================
+  # Uncomment and modify as needed
+  # - name: "some_custom_field"
+  #   enabled: false
+  #   value: "custom_value"
+  #   conditions:
+  #     - type: "filename_contains"
+  #       pattern: "Kobra S1"
+  #     - type: "json_value"
+  #       key: "type"
+  #       value: "process"
