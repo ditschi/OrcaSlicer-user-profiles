@@ -1,0 +1,22 @@
+{
+    "default_acceleration": "10000",
+    "from": "User",
+    "gap_infill_speed": "250",
+    "inherits": "Defaults v2",
+    "initial_layer_acceleration": "500",
+    "initial_layer_infill_speed": "105",
+    "initial_layer_speed": "50",
+    "inner_wall_speed": "300",
+    "internal_solid_infill_speed": "250",
+    "is_custom_defined": "0",
+    "name": "Defaults v2.1",
+    "outer_wall_acceleration": "5000",
+    "outer_wall_speed": "200",
+    "print_settings_id": "Defaults v2.1",
+    "sparse_infill_speed": "270",
+    "support_speed": "200",
+    "top_surface_acceleration": "2000",
+    "top_surface_speed": "200",
+    "travel_speed": "500",
+    "version": "0.0.0.0"
+}
