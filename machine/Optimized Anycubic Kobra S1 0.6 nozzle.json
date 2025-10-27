@@ -31,7 +31,7 @@
         "0x250"
     ],
     "printable_height": "250",
-    "thumbnails": "230x110/PNG",
+    "thumbnails": "32x32/PNG, 400x300/PNG",
     "thumbnails_format": "PNG",
     "thumbnails_internal": "512x512/PNG/top",
     "thumbnails_internal_switch": "1",
@@ -236,5 +236,7 @@
     "z_hop_types": [
         "Slope Lift"
     ],
-    "z_offset": "0"
+    "z_offset": "0",
+    "print_host": "http://192.168.1.246:4409",
+    "print_host_webui": "Anycubic Kobra S1 Combo"
 }

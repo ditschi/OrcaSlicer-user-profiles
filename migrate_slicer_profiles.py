@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert Anycubic Slicer profiles to OrcaSlicer format.
+Migrate Anycubic Slicer profiles to OrcaSlicer format.
 
 This script processes JSON profile files from Anycubic Slicer, resolves inheritance,
 and converts them to OrcaSlicer-compatible format.
@@ -12,18 +12,12 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
-
-try:
-    import yaml
-except ImportError:
-    yaml = None
+from typing import Any, Dict, Set
 
 # Constants
-DEFAULT_CONFIG_FILE = "./profile_convert_config.yml"
 DEFAULT_SOURCE = "~/.config/AnycubicSlicerNext/system/Anycubic/"
 DEFAULT_OUTPUT = "~/.config/OrcaSlicer/user/default/"
-DEFAULT_FILTER = "**/*"
+DEFAULT_FILTER = "**/*.json"
 DEFAULT_PREFIX = "Original "
 MAX_INHERITANCE_DEPTH = 5
 
@@ -32,8 +26,8 @@ NOZZLE_PATTERN = re.compile(r"(\d+\.\d+) nozzle", re.IGNORECASE)
 PRINTER_NAME_PATTERN = re.compile(r"(?:.*@)?\s*(.*?)\s*\d+\.\d+\s*nozzle", re.IGNORECASE)
 
 
-class ProfileConverter:
-    """Handles conversion of slicer profiles from Anycubic to OrcaSlicer format."""
+class ProfileMigrator:
+    """Handles migration of slicer profiles from Anycubic to OrcaSlicer format."""
 
     def __init__(
         self,
@@ -44,7 +38,6 @@ class ProfileConverter:
         filter_pattern: str = DEFAULT_FILTER,
         overwrite: bool = False,
         sort_keys: bool = False,
-        config: Optional[Dict[str, Any]] = None,
     ):
         self.source = source.expanduser().resolve()
         self.output = output.expanduser().resolve()
@@ -53,13 +46,11 @@ class ProfileConverter:
         self.filter_pattern = filter_pattern
         self.overwrite = overwrite
         self.sort_keys = sort_keys
-        self.config = config or {}
         self.logger = logging.getLogger(__name__)
         self._processed_files: Set[Path] = set()
-        self._json_overwrite_rules = self._parse_json_overwrite_rules()
 
     def run(self) -> int:
-        """Execute the conversion process."""
+        """Execute the migration process."""
         if not self.source.exists():
             self.logger.error(f"Source path does not exist: {self.source}")
             return 1
@@ -89,7 +80,7 @@ class ProfileConverter:
                     error_count += 1
 
         self.logger.info(
-            f"Processing complete. Processed: {processed_count}, Errors: {error_count}"
+            f"Migration complete. Processed: {processed_count}, Errors: {error_count}"
         )
         return 0 if error_count == 0 else 1
 
@@ -187,66 +178,6 @@ class ProfileConverter:
 
         return result
 
-    def _parse_json_overwrite_rules(self) -> List[Dict[str, Any]]:
-        """Parse and validate JSON overwrite rules from config."""
-        rules = []
-        raw_rules = self.config.get("json_value_overwrite", [])
-
-        for rule in raw_rules:
-            if not rule.get("enabled", False):
-                continue
-
-            name = rule.get("name")
-            if not name:
-                self.logger.warning("Skipping json_value_overwrite rule without 'name'")
-                continue
-
-            if "value" not in rule:
-                self.logger.warning(f"Skipping json_value_overwrite rule '{name}' without 'value'")
-                continue
-
-            rules.append({
-                "name": name,
-                "value": rule["value"],
-                "conditions": rule.get("conditions", []),
-            })
-
-        return rules
-
-    def _check_conditions(
-        self, conditions: List[Dict[str, Any]], file_path: Path, data: Dict[str, Any]
-    ) -> bool:
-        """Check if all conditions are met (AND logic)."""
-        if not conditions:
-            return True
-
-        for condition in conditions:
-            condition_type = condition.get("type")
-
-            if condition_type == "filename_contains":
-                pattern = condition.get("pattern", "")
-                if pattern not in file_path.name:
-                    return False
-
-            elif condition_type == "json_value":
-                key = condition.get("key")
-                expected_value = condition.get("value")
-
-                if key is None or expected_value is None:
-                    self.logger.warning(f"Invalid json_value condition: {condition}")
-                    return False
-
-                actual_value = data.get(key)
-                # Exact string match
-                if str(actual_value) != str(expected_value):
-                    return False
-
-            else:
-                self.logger.warning(f"Unknown condition type: {condition_type}")
-                return False
-
-        return True
-
     def _apply_transformations(self, data: Dict[str, Any], file_path: Path) -> None:
         """Apply required transformations to the profile data."""
         # Set required fields
@@ -263,31 +194,6 @@ class ProfileConverter:
         # Set support_multi_bed_types if it exists
         if "support_multi_bed_types" in data:
             data["support_multi_bed_types"] = "1"
-
-        # Apply JSON value overwrites from config
-        self._apply_json_overwrites(data, file_path)
-
-    def _apply_json_overwrites(self, data: Dict[str, Any], file_path: Path) -> None:
-        """Apply JSON value overwrites based on config rules."""
-        for rule in self._json_overwrite_rules:
-            name = rule["name"]
-            value = rule["value"]
-            conditions = rule["conditions"]
-
-            # Check if conditions are met
-            if not self._check_conditions(conditions, file_path, data):
-                continue
-
-            # Only overwrite if key exists
-            if name in data:
-                data[name] = value
-                self.logger.debug(
-                    f"Applied json_value_overwrite for '{name}' in {file_path.name}"
-                )
-            else:
-                self.logger.debug(
-                    f"Skipping json_value_overwrite for '{name}' (key not found) in {file_path.name}"
-                )
 
     def _set_compatible_printers_condition(
         self, data: Dict[str, Any], file_path: Path
@@ -402,109 +308,68 @@ def setup_logging(debug: bool) -> None:
     )
 
 
-def load_config(config_path: Optional[Path]) -> Dict[str, Any]:
-    """Load configuration from YAML file."""
-    logger = logging.getLogger(__name__)
-
-    if yaml is None:
-        logger.warning(
-            "PyYAML not installed. Config file support disabled. "
-            "Install with: pip install pyyaml"
-        )
-        return {}
-
-    if config_path is None:
-        config_path = Path(DEFAULT_CONFIG_FILE)
-
-    if not config_path.exists():
-        logger.warning(
-            f"Config file not found: {config_path}. "
-            "JSON value overwrite features will be disabled."
-        )
-        return {}
-
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        logger.info(f"Loaded configuration from: {config_path}")
-        return config or {}
-    except Exception as e:
-        logger.error(f"Failed to load config file {config_path}: {e}")
-        return {}
-
-
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Convert Anycubic Slicer profiles to OrcaSlicer format.",
+        description="Migrate Anycubic Slicer profiles to OrcaSlicer format.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
-        "--config",
+        "-s", "--source",
         type=str,
-        default=None,
-        help=f"Path to YAML config file (default: {DEFAULT_CONFIG_FILE})",
+        default=DEFAULT_SOURCE,
+        help=f"Source directory path (default: {DEFAULT_SOURCE})",
     )
 
     parser.add_argument(
-        "--source",
+        "-o", "--output",
         type=str,
-        default=None,
-        help=f"Source directory path (default from config or {DEFAULT_SOURCE})",
+        default=DEFAULT_OUTPUT,
+        help=f"Output directory path (default: {DEFAULT_OUTPUT})",
     )
 
     parser.add_argument(
-        "--output",
+        "-p", "--prefix",
         type=str,
-        default=None,
-        help=f"Output directory path (default from config or {DEFAULT_OUTPUT})",
+        default=DEFAULT_PREFIX,
+        help=f"Prefix for output filenames (default: '{DEFAULT_PREFIX}')",
     )
 
     parser.add_argument(
-        "--prefix",
+        "-P", "--postfix",
         type=str,
-        default=None,
-        help=f"Prefix for output filenames (default from config or '{DEFAULT_PREFIX}')",
+        default="",
+        help="Postfix for output filenames (default: none)",
     )
 
     parser.add_argument(
-        "--postfix",
+        "-f", "--filter",
         type=str,
-        default=None,
-        help="Postfix for output filenames (default from config or none)",
+        default=DEFAULT_FILTER,
+        help=f"Glob pattern to filter input files (default: '{DEFAULT_FILTER}')",
     )
 
     parser.add_argument(
-        "--filter",
-        type=str,
-        default=None,
-        help=f"Glob pattern to filter input files (default from config or '{DEFAULT_FILTER}')",
-    )
-
-    parser.add_argument(
-        "--overwrite",
+        "-w", "--overwrite",
         action="store_true",
-        default=None,
-        help="Overwrite existing files in output directory (default from config or False)",
+        help="Overwrite existing files in output directory (default: False)",
     )
 
     parser.add_argument(
-        "--debug",
+        "-d", "--debug",
         action="store_true",
-        default=None,
-        help="Enable debug logging (default from config or False)",
+        help="Enable debug logging (default: False)",
     )
 
     parser.add_argument(
-        "--sort",
+        "-S", "--sort",
         action="store_true",
-        default=None,
-        help="Sort JSON keys alphabetically in output (default from config or False)",
+        help="Sort JSON keys alphabetically in output (default: False)",
     )
 
     parser.add_argument(
-        "--interactive",
+        "-i", "--interactive",
         action="store_true",
         help="Run in interactive mode (prompt for inputs)",
     )
@@ -512,68 +377,35 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_config_default(config: Dict[str, Any], key: str, fallback: Any) -> Any:
-    """Get default value from config or use fallback."""
-    defaults = config.get("defaults", {})
-    return defaults.get(key, fallback)
-
-
-def interactive_mode(config: Dict[str, Any]) -> argparse.Namespace:
+def interactive_mode() -> argparse.Namespace:
     """Run interactive mode to gather user inputs."""
-    print("=== Slicer Profile Converter - Interactive Mode ===\n")
+    print("=== Slicer Profile Migrator - Interactive Mode ===\n")
 
-    default_source = get_config_default(config, "source", DEFAULT_SOURCE)
-    source = input(f"Source path [{default_source}]: ").strip()
-    source = source if source else default_source
+    source = input(f"Source path [{DEFAULT_SOURCE}]: ").strip()
+    source = source if source else DEFAULT_SOURCE
 
-    default_output = get_config_default(config, "output", DEFAULT_OUTPUT)
-    output = input(f"Output path [{default_output}]: ").strip()
-    output = output if output else default_output
+    output = input(f"Output path [{DEFAULT_OUTPUT}]: ").strip()
+    output = output if output else DEFAULT_OUTPUT
 
-    default_prefix = get_config_default(config, "prefix", DEFAULT_PREFIX)
-    prefix = input(f"Filename prefix [{default_prefix}]: ").strip()
-    prefix = prefix if prefix else default_prefix
+    prefix = input(f"Filename prefix [{DEFAULT_PREFIX}]: ").strip()
+    prefix = prefix if prefix else DEFAULT_PREFIX
 
-    default_postfix = get_config_default(config, "postfix", "")
-    postfix_prompt = f"[{default_postfix}]" if default_postfix else "[none]"
-    postfix = input(f"Filename postfix {postfix_prompt}: ").strip()
-    if not postfix:
-        postfix = default_postfix
+    postfix = input(f"Filename postfix [none]: ").strip()
 
-    default_filter = get_config_default(config, "filter", DEFAULT_FILTER)
-    filter_pattern = input(f"Filter pattern [{default_filter}]: ").strip()
-    filter_pattern = filter_pattern if filter_pattern else default_filter
+    filter_pattern = input(f"Filter pattern [{DEFAULT_FILTER}]: ").strip()
+    filter_pattern = filter_pattern if filter_pattern else DEFAULT_FILTER
 
-    default_overwrite = get_config_default(config, "overwrite", False)
-    overwrite_default = "Y/n" if default_overwrite else "y/N"
-    overwrite_input = input(f"Overwrite existing files? [{overwrite_default}]: ").strip().lower()
-    if overwrite_input:
-        overwrite = overwrite_input in ("y", "yes")
-    else:
-        overwrite = default_overwrite
+    overwrite_input = input(f"Overwrite existing files? [y/N]: ").strip().lower()
+    overwrite = overwrite_input in ("y", "yes")
 
-    default_debug = get_config_default(config, "debug", False)
-    debug_default = "Y/n" if default_debug else "y/N"
-    debug_input = input(f"Enable debug logging? [{debug_default}]: ").strip().lower()
-    if debug_input:
-        debug = debug_input in ("y", "yes")
-    else:
-        debug = default_debug
+    debug_input = input(f"Enable debug logging? [y/N]: ").strip().lower()
+    debug = debug_input in ("y", "yes")
 
-    default_sort = get_config_default(config, "sort_keys", False)
-    sort_default = "Y/n" if default_sort else "y/N"
-    sort_input = input(f"Sort JSON keys alphabetically? [{sort_default}]: ").strip().lower()
-    if sort_input:
-        sort_keys = sort_input in ("y", "yes")
-    else:
-        sort_keys = default_sort
-
-    config_file = input(f"Config file path [{DEFAULT_CONFIG_FILE}]: ").strip()
-    config_file = config_file if config_file else None
+    sort_input = input(f"Sort JSON keys alphabetically? [y/N]: ").strip().lower()
+    sort_keys = sort_input in ("y", "yes")
 
     # Create namespace object
     args = argparse.Namespace(
-        config=config_file,
         source=source,
         output=output,
         prefix=prefix,
@@ -592,45 +424,27 @@ def main() -> int:
     """Main entry point."""
     args = parse_arguments()
 
-    # Load config file
-    config_path = Path(args.config) if args.config else None
-    config = load_config(config_path)
-
     # Switch to interactive mode if requested
     if args.interactive:
-        args = interactive_mode(config)
-        # Reload config if different path was provided in interactive mode
-        if args.config:
-            config = load_config(Path(args.config))
-
-    # Merge CLI args with config defaults
-    source = args.source or get_config_default(config, "source", DEFAULT_SOURCE)
-    output = args.output or get_config_default(config, "output", DEFAULT_OUTPUT)
-    prefix = args.prefix if args.prefix is not None else get_config_default(config, "prefix", DEFAULT_PREFIX)
-    postfix = args.postfix if args.postfix is not None else get_config_default(config, "postfix", "")
-    filter_pattern = args.filter or get_config_default(config, "filter", DEFAULT_FILTER)
-    overwrite = args.overwrite if args.overwrite is not None else get_config_default(config, "overwrite", False)
-    debug = args.debug if args.debug is not None else get_config_default(config, "debug", False)
-    sort_keys = args.sort if args.sort is not None else get_config_default(config, "sort_keys", False)
+        args = interactive_mode()
 
     # Setup logging
-    setup_logging(debug)
+    setup_logging(args.debug)
     logger = logging.getLogger(__name__)
 
-    # Create converter and run
-    converter = ProfileConverter(
-        source=Path(source),
-        output=Path(output),
-        prefix=prefix,
-        postfix=postfix,
-        filter_pattern=filter_pattern,
-        overwrite=overwrite,
-        sort_keys=sort_keys,
-        config=config,
+    # Create migrator and run
+    migrator = ProfileMigrator(
+        source=Path(args.source),
+        output=Path(args.output),
+        prefix=args.prefix,
+        postfix=args.postfix,
+        filter_pattern=args.filter,
+        overwrite=args.overwrite,
+        sort_keys=args.sort,
     )
 
     try:
-        return converter.run()
+        return migrator.run()
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
         return 130

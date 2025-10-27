@@ -1,29 +1,33 @@
-# Profile Converter Configuration
-# This file contains default values and JSON overwrite rules for profile conversion
-
-# Default argument values
-# These can be overridden by command-line arguments
-defaults:
-  source: "~/.config/AnycubicSlicerNext/system/Anycubic/"
-  output: "~/.config/OrcaSlicer/user/default/"
-  prefix: "Original "
-  postfix: ""
-  filter: "**/*"
-  overwrite: false
-  debug: false
+# Profile Update Configuration (Optimized)
+# This file contains JSON overwrite rules for updating slicer profiles with optimized settings
 
 # JSON value overwrite rules
 # These rules allow you to overwrite specific JSON keys based on conditions
 # Each rule has:
 #   - name: The JSON key to overwrite
-#   - enabled: Whether this rule is active (true/false)
+#   - enabled: Whether this rule is active (default: true if not specified)
 #   - value: The value to set (can be multiline string using | for G-code)
+#   - add: Whether to add the key if it doesn't exist (default: false)
 #   - conditions: (optional) List of conditions that must ALL match (AND logic)
-#       - type: "filename_contains" - Check if filename contains a pattern
-#         pattern: String to search for in filename
+#       - type: "filename_glob" - Match filename using glob pattern (e.g., *Kobra S1*.json)
+#         pattern: Glob pattern for filename matching
+#       - type: "filepath_glob" - Match relative file path using glob pattern (e.g., machine/*Kobra*.json)
+#         pattern: Glob pattern for filepath matching
 #       - type: "json_value" - Check if a JSON key has a specific value
 #         key: The JSON key to check
 #         value: The expected value (exact string match)
+
+
+# Default conditions applied to ALL rules
+default_conditions:
+  - type: "json_value"
+    key: "type"
+    value: "machine_model"
+    negate: true
+  - type: "filename_glob"
+    pattern: "*Kobra S1*"
+  - type: "exclude_filepath_glob"
+    pattern: "**/.copy_from_AnycubicSlicerNext/*"
 
 json_value_overwrite:
   # ========================================
@@ -32,9 +36,48 @@ json_value_overwrite:
 
   # Set the "from" field to "User" for all profiles
   - name: "from"
-    enabled: true
     value: "User"
-    conditions: []  # Apply to all files
+
+  - name: "thumbnails"
+    value: "32x32/PNG, 400x300/PNG" # required by mainsail and fluidd
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/machine/**"
+
+  - name: "sparse_infill_pattern"
+    value: "gyroid"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "brim_type"
+    add: true
+    value: "no_brim"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "host_type"
+    add: true
+    value: "octoprint"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/machine/**"
+
+  - name: "print_host"
+    add: true
+    value: "http://192.168.1.246:4409"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/machine/**"
+
+  - name: "print_host_webui"
+    add: true
+    value: "Anycubic Kobra S1 Combo"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/machine/**"
+
 
   # ========================================
   # G-code Overrides
@@ -42,7 +85,6 @@ json_value_overwrite:
 
   # Machine Start G-code - Applied to all machine profiles
   - name: "machine_start_gcode"
-    enabled: true
     value: |
       ; ================================
       ; Begin of Machine Start G-code
@@ -160,79 +202,47 @@ json_value_overwrite:
   - name: "machine_max_acceleration_e"
     enabled: true
     value: ["20000", "20000"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
+
 
   - name: "machine_max_acceleration_retracting"
     enabled: true
     value: ["20000", "20000"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_acceleration_x"
     enabled: true
     value: ["20000", "20000"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_acceleration_y"
     enabled: true
     value: ["20000", "20000"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_acceleration_z"
     enabled: true
     value: ["1000", "1000"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_jerk_e"
     enabled: true
     value: ["15", "15"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_jerk_x"
     enabled: true
     value: ["15", "15"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_jerk_y"
     enabled: true
     value: ["15", "15"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_jerk_z"
     enabled: true
     value: ["15", "15"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_speed_e"
     enabled: true
     value: ["600", "600"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   - name: "machine_max_speed_z"
     enabled: true
     value: ["15", "15"]
-    conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
 
   # ========================================
   # Nozzle-Specific Settings (0.25mm)
@@ -243,28 +253,22 @@ json_value_overwrite:
     enabled: true
     value: ["30"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.25 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.25 nozzle*"
 
   - name: "wipe_distance"
     enabled: true
     value: ["1"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.25 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.25 nozzle*"
 
   - name: "retract_lift_above"
     enabled: true
     value: ["0"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.25 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.25 nozzle*"
 
   # ========================================
   # Nozzle-Specific Settings (0.4mm)
@@ -275,28 +279,22 @@ json_value_overwrite:
     enabled: true
     value: ["40"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.4 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.4 nozzle*"
 
   - name: "wipe_distance"
     enabled: true
     value: ["1"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.4 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.4 nozzle*"
 
   - name: "retract_lift_above"
     enabled: true
     value: ["0"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.4 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.4 nozzle*"
 
   # ========================================
   # Nozzle-Specific Settings (0.6mm)
@@ -307,28 +305,22 @@ json_value_overwrite:
     enabled: true
     value: ["40"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.6 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.6 nozzle*"
 
   - name: "wipe_distance"
     enabled: true
     value: ["2"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.6 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.6 nozzle*"
 
   - name: "retract_lift_above"
     enabled: true
     value: ["0"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.6 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.6 nozzle*"
 
   # ========================================
   # Nozzle-Specific Settings (0.8mm)
@@ -339,39 +331,36 @@ json_value_overwrite:
     enabled: true
     value: ["40"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.8 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.8 nozzle*"
 
   - name: "wipe_distance"
     enabled: true
     value: ["2"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.8 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.8 nozzle*"
 
   - name: "retract_lift_above"
     enabled: true
     value: ["0"]
     conditions:
-      - type: "filename_contains"
-        pattern: "Kobra S1"
-      - type: "filename_contains"
-        pattern: "0.8 nozzle"
+      - type: "filename_glob"
+        pattern: "*0.8 nozzle*"
 
   # ========================================
   # Example: Custom rules
   # ========================================
   # Uncomment and modify as needed
   # - name: "some_custom_field"
-  #   enabled: true
+  #   enabled: false
   #   value: "custom_value"
+  #   add: true  # Add key if it doesn't exist
   #   conditions:
-  #     - type: "filename_contains"
-  #       pattern: "Kobra S1"
+  #     - type: "filename_glob"
+  #       pattern: "*Kobra S1*.json"  # Match any file with "Kobra S1" in the name
+  #     - type: "filepath_glob"
+  #       pattern: "machine/*.json"  # Match files in machine/ directory
   #     - type: "json_value"
   #       key: "type"
   #       value: "process"

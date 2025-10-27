@@ -9,14 +9,14 @@
     "machine_load_filament_time": "0",
     "machine_max_acceleration_x": [
         "20000",
-        "10000"
+        "20000"
     ],
     "machine_max_acceleration_y": [
         "20000",
-        "10000"
+        "20000"
     ],
     "machine_max_speed_z": [
-        "20",
+        "15",
         "15"
     ],
     "name": "Anycubic Kobra S1 0.4 nozzle - Optimized",
@@ -25,10 +25,14 @@
         "0"
     ],
     "retraction_speed": [
-        "30"
+        "40"
     ],
     "version": "1.3.2412.28",
     "z_hop_types": [
         "Auto Lift"
-    ]
+    ],
+    "instantiation": "true",
+    "host_type": "octoprint",
+    "print_host": "http://192.168.1.246:4409",
+    "print_host_webui": "Anycubic Kobra S1 Combo"
 }

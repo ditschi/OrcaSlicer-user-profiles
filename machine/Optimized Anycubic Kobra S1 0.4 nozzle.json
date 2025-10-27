@@ -1,67 +1,42 @@
 {
-    "adaptive_bed_mesh_margin": "0",
-    "auxiliary_fan": "1",
-    "bbl_use_printhost": "0",
-    "bed_custom_model": "",
-    "bed_custom_texture": "",
-    "bed_exclude_area": [],
-    "bed_mesh_max": "0,0",
-    "bed_mesh_min": "0,0",
-    "bed_mesh_probe_distance": "0,0",
+    "type": "machine",
+    "name": "Anycubic Kobra S1 0.4 nozzle",
+    "from": "User",
+    "instantiation": "true",
+    "gcode_flavor": "klipper",
+    "thumbnails": "32x32/PNG, 400x300/PNG",
+    "thumbnails_format": "PNG",
+    "version": "1.3.2508.11",
+    "machine_start_gcode": "; ================================\n; Begin of Machine Start G-code\n; ================================\n; Added as contained in AnycubicSlicerNext g-code to fix issues with error: The device cannot parse the file\nC X20000 Y20000 Z1000 E20000 ; Set maximum accelerations (mm/sec^2)\nM203 X600 Y600 Z15 E600 ; Set maximum feedrates (mm/sec) (mm/sec)\nM204 P20000 R20000 T20000 ; Set Starting Acceleration (mm/sec^2)\nM205 X15.00 Y15.00 Z15.00 E15.00 ; Set jerk limits (mm/sec)\nM106 S0 ; Turn off part cooling fan (Fan 0)\nM106 P2 S0 ; Turn off auxiliary fan (Fan 2)\n\n; start of original Machine Start G-code\nG9111 bedTemp=[first_layer_bed_temperature] extruderTemp=[first_layer_temperature[initial_tool]]\nM117 Clear LCD display message\n; end of original Machine Start G-code\n; ================================\n; End of Machine Start G-code\n; ================================\n",
+    "machine_end_gcode": "; ================================\n; Begin of Machine End G-code\n; ================================\nG92 E0\nG1 E-2 F3000\n{if max_layer_z < max_print_height-1}G1 Z{z_offset+min(max_layer_z+2, max_print_height)} F900 ; Move print head further up{endif}\nG1 F12000; present print\nG1 X44;  throw_position_x\nG1 Y270; throw_position_y\nM140 S0 ; turn off heatbed\nM104 S0 ; turn off temperature\nM106 P1 S0 ; turn off fan\nM106 P2 S0\nM106 P3 S0\nM84; disable motors\n; disable stepper motors\n; ================================\n; End of Machine End G-code\n; ================================\n",
+    "printing_by_object_gcode": "",
     "before_layer_change_gcode": "; BEFORE_LAYER_CHANGE [layer_num] @ [layer_z]mm",
-    "best_object_pos": "0.5,0.5",
-    "change_extrusion_role_gcode": "",
+    "layer_change_gcode": "; AFTER_LAYER_CHANGE [layer_num] @ [layer_z]mm",
     "change_filament_gcode": "; ================================\n; Begin of filament change\n; ================================\n; NOTE: This manual sequence replaces the default firmware routine executed by:\n;       T[next_extruder] in the original Kobra S1 profile\n;       Original routine includes long retraction, slow XY/Z moves,\n;       multi-pass purge/wipe, and long dwell times\n;       This optimized version is faster and more efficient while safe\n\n; 1. Retract old filament\n; ----------------------\n; Original firmware retracts a lot and waits a long time.\n; Here we retract only as much as needed to safely remove the filament (~60 mm typical for Bowden path)\nG1 E-60 F600 ; retract 60mm at 10mm/s\n\n; 2. Move to safe purge/wipe position\n; -----------------------------------\n; Original firmware moves very slowly, multiple Z lifts, long XY wipes\nG1 Z{toolchange_z+5} F1200 ; lift 5mm fast but safe\nG1 X260 Y25 F12000        ; fast travel to purge bucket / wipe area\n\n; 3. Start heating for new filament (overlaps with filament change)\n; -----------------------------------------------------------------\n; Original firmware waits for full nozzle heat sequentially\nM104 S{next_filament_temp} ; set nozzle temp (non-blocking)\n; Optional: preheat bed if needed (overlaps with movement)\nM140 S{first_layer_bed_temp} ; set bed temp (non-blocking)\n\n; 4. Remove old filament manually (or via Rinkhals actuator)\n; ----------------------------------------------------------\n; Original firmware does automated unload + long dwell/ooze\n; Here, operator or auto feeder removes old filament while hotend heats\n\n; 5. Insert new filament\n; ---------------------\n; Feed new filament until it reaches nozzle\nG1 E10 F400 ; small initial extrusion to check flow\n; Optional small back-and-forth wipe\nG1 Y1 F600\nG1 Y25 F3000\n\n; 6. Purge minimal amount\n; ----------------------\n; Original firmware purges for 76s + 35s\n; Here, we purge only enough to get clean filament at nozzle\nG1 E10 F400 ; extrude 10mm\n\n; 7. Return to print height\n; ------------------------\n; Original firmware has extra Z moves and waits\nG1 Z{toolchange_z} F1200\nM400 ; wait for moves to finish\n; ================================\n; End of filament change\n; ================================\n",
+    "change_extrusion_role_gcode": "",
+    "machine_pause_gcode": "M600",
+    "template_custom_gcode": "",
+    "emit_machine_limits_to_gcode": "1",
+    "time_lapse_gcode": "",
+    "best_object_pos": "0.5,0.5",
     "cooling_tube_length": "0",
     "cooling_tube_retraction": "0",
-    "default_bed_type": "",
-    "default_filament_profile": [
-        "Anycubic PLA @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PLA High Speed @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PLA Luminous @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PLA Matte @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PLA Silk @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PLA+ @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic ABS @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic ASA @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PEBA @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic PETG @Anycubic Kobra S1 0.4 nozzle",
-        "Anycubic TPU @Anycubic Kobra S1 0.4 nozzle"
-    ],
-    "default_print_profile": "0.20mm Standard @Anycubic Kobra S1 0.4 nozzle",
     "deretraction_speed": [
         "0"
     ],
     "disable_m73": "1",
-    "emit_machine_limits_to_gcode": "1",
     "enable_filament_ramming": "0",
     "enable_long_retraction_when_cut": "0",
     "extra_loading_move": "0",
     "extruder_clearance_height_to_lid": "240",
     "extruder_clearance_height_to_rod": "48",
     "extruder_clearance_radius": "60",
-    "extruder_colour": [
-        "#FF4D4F"
-    ],
     "extruder_offset": [
         "0x0"
     ],
     "fan_kickstart": "0",
     "fan_speedup_overhangs": "1",
     "fan_speedup_time": "0",
-    "from": "User",
-    "gcode_flavor": "klipper",
-    "head_wrap_detect_zone": [],
-    "high_current_on_filament_swap": "0",
-    "host_type": "octoprint",
-    "inherits": "",
-    "is_custom_defined": "0",
-    "layer_change_gcode": "; AFTER_LAYER_CHANGE [layer_num] @ [layer_z]mm\n\n; Added as recommended by mainsail to get layer count\nSET_PRINT_STATS_INFO CURRENT_LAYER={layer_num + 1}",
-    "long_retractions_when_cut": [
-        "0"
-    ],
-    "machine_end_gcode": "; ================================\n; Begin of Machine End G-code\n; ================================\nG92 E0\nG1 E-2 F3000\n{if max_layer_z < max_print_height-1}G1 Z{z_offset+min(max_layer_z+2, max_print_height)} F900 ; Move print head further up{endif}\nG1 F12000; present print\nG1 X44;  throw_position_x\nG1 Y270; throw_position_y\nM140 S0 ; turn off heatbed\nM104 S0 ; turn off temperature\nM106 P1 S0 ; turn off fan\nM106 P2 S0\nM106 P3 S0\nM84; disable motors\n; disable stepper motors\n\n\n; Added as recommended by mainsail to get layer count\n; total layers count = [total_layer_count]\n; ================================\n; End of Machine End G-code\n; ================================\n",
-    "machine_load_filament_time": "126.423",
     "machine_max_acceleration_e": [
         "20000",
         "20000"
@@ -106,10 +81,6 @@
         "15",
         "15"
     ],
-    "machine_max_junction_deviation": [
-        "0",
-        "0"
-    ],
     "machine_max_speed_e": [
         "600",
         "600"
@@ -134,20 +105,13 @@
         "0",
         "0"
     ],
-    "machine_pause_gcode": "M600",
-    "machine_start_gcode": "; ================================\n; Begin of Machine Start G-code\n; ================================\n; Added as recommended by mainsail to get layer count\nSET_PRINT_STATS_INFO TOTAL_LAYER=[total_layer_count]\n\n; Added as contained in AnycubicSlicerNext g-code to fix issues with error: The device cannot parse the file\nC X20000 Y20000 Z1000 E20000 ; Set maximum accelerations (mm/sec^2)\nM203 X600 Y600 Z15 E600 ; Set maximum feedrates (mm/sec) (mm/sec)\nM204 P20000 R20000 T20000 ; Set Starting Acceleration (mm/sec^2)\nM205 X15.00 Y15.00 Z15.00 E15.00 ; Set jerk limits (mm/sec)\nM106 S0 ; Turn off part cooling fan (Fan 0)\nM106 P2 S0 ; Turn off auxiliary fan (Fan 2)\n\n; start of original Machine Start G-code\nG9111 bedTemp=[first_layer_bed_temperature] extruderTemp=[first_layer_temperature[initial_tool]]\nM117 Clear LCD display message\n; end of original Machine Start G-code\n; ================================\n; End of Machine Start G-code\n; ================================\n",
     "machine_tool_change_time": "0",
-    "machine_unload_filament_time": "0",
-    "manual_filament_change": "0",
     "max_layer_height": [
         "0.28"
     ],
-    "max_resonance_avoidance_speed": "120",
     "min_layer_height": [
         "0.08"
     ],
-    "min_resonance_avoidance_speed": "70",
-    "name": "Optimized Anycubic Kobra S1 0.4 nozzle",
     "nozzle_diameter": [
         "0.4"
     ],
@@ -160,16 +124,7 @@
     "preferred_orientation": "0",
     "print_host": "http://192.168.1.246:4409",
     "print_host_webui": "Anycubic Kobra S1 Combo",
-    "printable_area": [
-        "0x0",
-        "250x0",
-        "250x250",
-        "0x250"
-    ],
-    "printable_height": "250",
-    "printer_model": "Anycubic Kobra S1",
-    "printer_notes": "",
-    "printer_settings_id": "Optimized Anycubic Kobra S1 0.4 nozzle",
+    "printer_settings_id": "Anycubic Kobra S1 0.4 nozzle",
     "printer_structure": "corexy",
     "printer_technology": "FFF",
     "printer_variant": "0.4",
@@ -180,9 +135,7 @@
     "printhost_port": "",
     "printhost_ssl_ignore_revoke": "0",
     "printhost_user": "",
-    "printing_by_object_gcode": "",
     "purge_in_prime_tower": "0",
-    "resonance_avoidance": "0",
     "retract_before_wipe": [
         "0%"
     ],
@@ -225,18 +178,13 @@
     "support_air_filtration": "1",
     "support_chamber_temp_control": "0",
     "support_multi_bed_types": "1",
-    "template_custom_gcode": "",
-    "thumbnails": "32x32/PNG, 400x300/PNG",
-    "thumbnails_format": "PNG",
     "time_cost": "0",
-    "time_lapse_gcode": "",
     "travel_slope": [
         "3"
     ],
     "upward_compatible_machine": [],
     "use_firmware_retraction": "0",
     "use_relative_e_distances": "1",
-    "version": "1.3.2508.11",
     "wipe": [
         "1"
     ],
@@ -249,5 +197,54 @@
     "z_hop_types": [
         "Slope Lift"
     ],
-    "z_offset": "0"
+    "z_offset": "0",
+    "setting_id": "GM001",
+    "inherits": "",
+    "printer_model": "Anycubic Kobra S1",
+    "default_print_profile": "0.20mm Standard @Anycubic Kobra S1 0.4 nozzle",
+    "default_filament_profile": [
+        "Anycubic PLA @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PLA High Speed @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PLA Luminous @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PLA Matte @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PLA Silk @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PLA+ @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic ABS @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic ASA @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PEBA @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic PETG @Anycubic Kobra S1 0.4 nozzle",
+        "Anycubic TPU @Anycubic Kobra S1 0.4 nozzle"
+    ],
+    "printable_area": [
+        "0x0",
+        "250x0",
+        "250x250",
+        "0x250"
+    ],
+    "printable_height": "250",
+    "thumbnails_internal": "512x512/PNG/top",
+    "thumbnails_internal_switch": "1",
+    "adaptive_bed_mesh_margin": "0",
+    "auxiliary_fan": "1",
+    "bbl_use_printhost": "0",
+    "bed_custom_model": "",
+    "bed_custom_texture": "",
+    "bed_exclude_area": [],
+    "bed_mesh_max": "0,0",
+    "bed_mesh_min": "0,0",
+    "bed_mesh_probe_distance": "0,0",
+    "extruder_colour": [
+        "#FF4D4F"
+    ],
+    "head_wrap_detect_zone": [],
+    "high_current_on_filament_swap": "0",
+    "host_type": "octoprint",
+    "is_custom_defined": "0",
+    "long_retractions_when_cut": [
+        "0"
+    ],
+    "machine_load_filament_time": "126.423",
+    "machine_unload_filament_time": "0",
+    "manual_filament_change": "0",
+    "printer_notes": ""
 }
