@@ -25,7 +25,6 @@ The default workflow to migrate and adapt the profiles can be found below.
 For more advances use cases check the individual sections documentation for the [migration](#migration-tool) and [update](#update-tool) tool.
 
 ```bash
-
 # 1. First migrate profiles from AnycubicSlicerNext
 ./migrate_slicer_profiles.py --filter '**/*Kobra S1*.json'
 
@@ -35,6 +34,20 @@ For more advances use cases check the individual sections documentation for the 
 # 3. Then create optimized versions (this will only create profile where actually content was changed)
 ./update_slicer_profiles.py --source ./ --output ./ --config ./profile_update_optimize.yml --filename-replace "Original" "Optimized"
 
+./update_slicer_profiles.py --source ./ --output ./ --config ./profile_update_optimize_speed.yml --filename-replace "Original" "Speed"
+```
+
+For updating existing profiles after updating the configuration you can run.
+
+```bash
+# Update Base profiles
+./update_slicer_profiles.py --source ./ --output ./ --config ./profile_update.yml --filter "**/Original*"
+
+# Update optimized profiles
+./update_slicer_profiles.py --source ./ --output ./ --config ./profile_update_optimize.yml --filter "**/Optimized*"
+
+# Update speed profiles
+./update_slicer_profiles.py --source ./ --config ./profile_update_optimize_speed.yml --filter "**/Speed*"
 ```
 
 ### Migration Tool

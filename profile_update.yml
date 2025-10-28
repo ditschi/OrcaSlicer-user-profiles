@@ -41,6 +41,9 @@ json_value_overwrite:
   - name: "from"
     value: "User"
 
+  - name: "filename_format"
+    value: "{input_filename_base}_[nozzle_diameter]n_{layer_height}mm_{filament_type[initial_tool]}_{print_time}.gcode"
+
   # ========================================
   # G-code Overrides
   # ========================================
