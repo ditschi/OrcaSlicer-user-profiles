@@ -1,5 +1,6 @@
-# Profile Update Configuration
-# This file contains JSON overwrite rules for updating slicer profiles
+# Profile Update Configuration (Base)
+# This file contains base/common JSON overwrite rules for updating slicer profiles
+
 
 # JSON value overwrite rules
 # These rules allow you to overwrite specific JSON keys based on conditions
@@ -18,7 +19,9 @@
 #         value: The expected value (exact string match)
 
 
+# ========================================
 # Default conditions applied to ALL rules
+# ========================================
 default_conditions:
   - type: "json_value"
     key: "type"
@@ -37,7 +40,6 @@ json_value_overwrite:
   # Set the "from" field to "User" for all profiles
   - name: "from"
     value: "User"
-
 
   # ========================================
   # G-code Overrides

@@ -461,8 +461,221 @@ def setup_logging(debug: bool) -> None:
     )
 
 
+def load_config_with_includes(
+    config_path: Path,
+    depth: int = 0,
+    visited: Optional[set] = None,
+    logger: Optional[logging.Logger] = None
+) -> Dict[str, Any]:
+    """
+    Recursively load configuration with includes (depth-first).
+
+    Args:
+        config_path: Path to YAML config file
+        depth: Current recursion depth
+        visited: Set of already visited paths (for circular detection)
+        logger: Logger instance
+
+    Returns:
+        Merged configuration dict with:
+        - default_conditions: List of merged conditions
+        - json_value_overwrite: List of merged rules
+
+    Raises:
+        ValueError: If max depth exceeded, circular include detected, or file not found
+    """
+    MAX_DEPTH = 5
+
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    if depth > MAX_DEPTH:
+        raise ValueError(
+            f"Include depth exceeded maximum of {MAX_DEPTH} levels. "
+            f"Current path: {config_path}"
+        )
+
+    if visited is None:
+        visited = set()
+
+    # Circular dependency detection
+    abs_path = config_path.resolve()
+    if abs_path in visited:
+        raise ValueError(
+            f"Circular include detected: {abs_path}\n"
+            f"Include chain: {' -> '.join(str(p) for p in visited)} -> {abs_path}"
+        )
+    visited.add(abs_path)
+
+    indent = "  " * depth
+    logger.debug(f"{indent}Loading config: {config_path.name} (depth={depth})")
+
+    # Load current config file
+    if not config_path.exists():
+        raise ValueError(f"Config file not found: {config_path}")
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            current_config = yaml.safe_load(f) or {}
+    except Exception as e:
+        raise ValueError(f"Failed to parse YAML in {config_path}: {e}")
+
+    # Initialize merged state
+    merged_rules = {}  # Key: rule["name"], Value: rule dict
+    merged_conditions = []
+    locked_rules = set()  # Rules locked by "override" includes
+
+    # Process includes first (depth-first, bottom-up)
+    includes = current_config.get("includes", [])
+
+    if includes:
+        logger.debug(f"{indent}Processing {len(includes)} include(s)...")
+
+    for idx, include_spec in enumerate(includes, 1):
+        include_file = include_spec.get("file")
+        if not include_file:
+            logger.warning(f"{indent}Skipping include without 'file' field")
+            continue
+
+        include_strategy = include_spec.get("merge_strategy", "inherit")
+
+        # Resolve include path RELATIVE to current config's directory
+        include_path = (config_path.parent / include_file).resolve()
+
+        logger.debug(
+            f"{indent}  [{idx}/{len(includes)}] Including: {include_file} "
+            f"(strategy: {include_strategy})"
+        )
+
+        if not include_path.exists():
+            raise ValueError(
+                f"Include file not found: {include_path}\n"
+                f"Referenced in: {config_path}\n"
+                f"Looking for: {include_file}"
+            )
+
+        # RECURSIVE: Load included config (goes all the way down)
+        try:
+            included_config = load_config_with_includes(
+                include_path,
+                depth + 1,
+                visited.copy(),  # Copy to allow sibling includes
+                logger
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Error loading include '{include_file}' from {config_path}: {e}"
+            )
+
+        # Merge included rules based on strategy
+        included_rules = included_config.get("json_value_overwrite", [])
+        logger.debug(
+            f"{indent}    Merging {len(included_rules)} rule(s) from {include_file}"
+        )
+
+        for rule in included_rules:
+            rule_name = rule.get("name")
+            if not rule_name:
+                logger.warning(f"{indent}    Skipping rule without 'name' field")
+                continue
+
+            if include_strategy == "inherit":
+                # Default: Include has LOWER priority
+                # Only add if not already in merged_rules
+                if rule_name not in merged_rules:
+                    merged_rules[rule_name] = rule
+                    logger.debug(
+                        f"{indent}      ✓ Added '{rule_name}' from include "
+                        f"(not in local)"
+                    )
+                else:
+                    logger.debug(
+                        f"{indent}      ✗ Skipped '{rule_name}' from include "
+                        f"(local/previous has priority)"
+                    )
+
+            elif include_strategy == "override":
+                # Include has HIGHER priority - lock this rule
+                if rule_name in merged_rules:
+                    logger.debug(
+                        f"{indent}      ⚡ Overriding '{rule_name}' with include "
+                        f"(strategy=override)"
+                    )
+                else:
+                    logger.debug(
+                        f"{indent}      ⚡ Adding '{rule_name}' from include "
+                        f"(strategy=override, locked)"
+                    )
+                merged_rules[rule_name] = rule
+                locked_rules.add(rule_name)
+
+            else:
+                logger.warning(
+                    f"{indent}    Unknown merge_strategy: {include_strategy}"
+                )
+
+        # Merge default_conditions (always extend, no override logic)
+        included_conditions = included_config.get("default_conditions", [])
+        if included_conditions:
+            merged_conditions.extend(included_conditions)
+            logger.debug(
+                f"{indent}    Merged {len(included_conditions)} default_condition(s)"
+            )
+
+    # Apply local rules from current config (but respect locked rules)
+    local_rules = current_config.get("json_value_overwrite", [])
+
+    if local_rules:
+        logger.debug(
+            f"{indent}Processing {len(local_rules)} local rule(s) from {config_path.name}..."
+        )
+
+    for rule in local_rules:
+        rule_name = rule.get("name")
+        if not rule_name:
+            logger.warning(f"{indent}  Skipping local rule without 'name' field")
+            continue
+
+        if rule_name in locked_rules:
+            # Skip: this rule was locked by an include with "override"
+            logger.debug(
+                f"{indent}  ✗ Skipped local '{rule_name}' "
+                f"(locked by include with merge_strategy=override)"
+            )
+            continue
+
+        # Local rule wins (default behavior)
+        if rule_name in merged_rules:
+            logger.debug(
+                f"{indent}  ✓ Overriding '{rule_name}' with local rule"
+            )
+        else:
+            logger.debug(
+                f"{indent}  ✓ Added local rule '{rule_name}'"
+            )
+        merged_rules[rule_name] = rule
+
+    # Merge local default_conditions
+    local_conditions = current_config.get("default_conditions", [])
+    if local_conditions:
+        merged_conditions.extend(local_conditions)
+        logger.debug(
+            f"{indent}Merged {len(local_conditions)} local default_condition(s)"
+        )
+
+    logger.debug(
+        f"{indent}✓ Finished loading {config_path.name}: "
+        f"{len(merged_rules)} total rules, {len(locked_rules)} locked"
+    )
+
+    return {
+        "default_conditions": merged_conditions,
+        "json_value_overwrite": list(merged_rules.values()),
+    }
+
+
 def load_config(config_path: Path) -> Dict[str, Any]:
-    """Load configuration from YAML file."""
+    """Load configuration from YAML file with include support."""
     logger = logging.getLogger(__name__)
 
     if yaml is None:
@@ -477,10 +690,16 @@ def load_config(config_path: Path) -> Dict[str, Any]:
         sys.exit(1)
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        logger.info(f"Loaded configuration from: {config_path}")
-        return config or {}
+        logger.info(f"Loading configuration from: {config_path}")
+        logger.info(f"{'='*60}")
+        config = load_config_with_includes(config_path, logger=logger)
+        logger.info(f"{'='*60}")
+        logger.info(
+            f"✓ Configuration loaded successfully: "
+            f"{len(config.get('json_value_overwrite', []))} rules, "
+            f"{len(config.get('default_conditions', []))} default conditions"
+        )
+        return config
     except Exception as e:
         logger.error(f"Failed to load config file {config_path}: {e}")
         sys.exit(1)

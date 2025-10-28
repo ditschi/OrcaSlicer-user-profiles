@@ -1,0 +1,370 @@
+# Profile Update Configuration (Speed Optimized)
+# Based on community-verified Kobra S1 settings and extSrc analysis
+#
+# SAFE LIMITS (Community + Official):
+# - Max Acceleration: 20,000 mm/s² (official), using 18,000 (safety margin)
+# - Max Speed: 600 mm/s (official), using 200-500 mm/s (practical)
+# - Community tested: 20,000 accel + 200 mm/s = excellent quality
+#
+# PHILOSOPHY:
+# - High accelerations (18,000) for fast direction changes
+# - High speeds (200 mm/s) for infill/internals
+# - Moderate outer walls (90 mm/s) for visible quality
+# - Fast travel (500 mm/s) for multi-object prints
+# - Adaptive cubic infill (faster than gyroid, less filament)
+# - Monotonic line top surface (fast path planning)
+# - 2 walls (user adjustable for strength)
+# - reduce_infill_retraction: 1 (fewer retractions, faster)
+
+# ========================================
+# INCLUDES
+# ========================================
+includes:
+  - file: "profile_update_optimize.yml"
+    # merge_strategy: "inherit"  # Default - local rules win
+
+# ========================================
+# EXPECTED RESULTS & PERFORMANCE
+# ========================================
+#
+# SPEED GAINS vs Optimized Profile:
+# ├─ Acceleration: 4,000 → 18,000 mm/s² (+350%) ⚡⚡⚡
+# ├─ Inner walls: 180 → 200 mm/s (+11%)
+# ├─ Sparse infill: 180 → 200 mm/s (+11%)
+# ├─ Internal solid: 180 → 200 mm/s (+11%)
+# ├─ Top surface: 180 → 200 mm/s (+11%)
+# ├─ Outer walls: 60 → 90 mm/s (+50%)
+# ├─ Travel: 300 → 500 mm/s (+67%) ⚡
+# └─ Initial layer: 40 → 70 mm/s (+75%)
+#
+# Estimated Time Savings:
+# • Single object prints: ~35-40% faster
+# • Multi-object prints: ~40-50% faster (travel speed benefit)
+# • Community benchmark: 24-min Benchy @ 20k accel (vs ~35-40 min stock)
+#
+# QUALITY IMPROVEMENTS vs Optimized:
+# ✓ Arachne wall generator (better variable widths, thin walls)
+# ✓ Monotonic line top surfaces (good finish, faster path planning)
+# ✓ 5 bottom layers vs 3 (better adhesion, fewer warping issues)
+# ✓ 1.07 bottom flow ratio (compensates for high-speed under-extrusion)
+# ✓ 0.2mm elephant foot compensation vs 0.1mm (better dimensional accuracy)
+# ✓ Optimized line widths (105%, 125% initial, 107% inner walls)
+# ✓ Firmware jerk control (smoother motion at high accelerations)
+#
+# SPEED OPTIMIZATIONS:
+# ⚡ Adaptive cubic infill (faster slicing, less filament than gyroid)
+# ⚡ Monotonic line top surface (simpler path planning than pure monotonic)
+#
+# TRADE-OFFS:
+# ⚠ Adaptive cubic infill is weaker than gyroid (but faster)
+# ⚠ Slightly more stringing (reduce_infill_retraction: 1)
+# ⚠ Higher mechanical wear (18k accel vs 4k - still safe, well below 20k max)
+# ⚠ Cooling becomes limiting factor on sharp overhangs (community-verified)
+#
+# SETTINGS PRESERVED (User Preference):
+# • 2 wall loops (user can adjust manually for strength requirements)
+# • No brim by default (user can enable if needed)
+#
+# COMMUNITY INSIGHTS:
+# • German forum (drucktipps3d.de): 20k accel = "no visible quality loss"
+# • Official Anycubic spec: 20,000 mm/s² max acceleration
+# • Recommended: Keep door OPEN for PLA prints
+# • Limiting factor: Part cooling on sharp corners at extreme speeds
+#
+# SAFETY NOTES:
+# ✓ All settings within official hardware limits
+# ✓ 18k accel provides safety margin vs 20k max
+# ✓ Speeds tested and verified by community users
+# ✓ Firmware jerk control prevents mechanical issues
+#
+# RECOMMENDATIONS:
+# 1. Test on non-critical parts first
+# 2. Monitor first few layers for adhesion issues
+# 3. Adjust cooling if corners show artifacts
+# 4. Increase wall_loops manually if part requires extra strength
+# 5. Reduce speeds slightly (200→180) if layer adhesion issues occur
+# 6. Keep firmware updated (community recommendation)
+# 7. For PLA: Keep enclosure door OPEN (community advice)
+
+
+# ========================================
+# Default conditions applied to ALL rules
+# ========================================
+default_conditions:
+  - type: "json_value"
+    key: "type"
+    value: "machine_model"
+    negate: true
+  - type: "filename_glob"
+    pattern: "*Kobra S1*"
+  - type: "exclude_filepath_glob"
+    pattern: "**/.copy_from_AnycubicSlicerNext/*"
+
+json_value_overwrite:
+  # ========================================
+  # SPEED CATEGORY: Accelerations (18000 mm/s²)
+  # ========================================
+  # High accelerations reduce time spent ramping up/down
+  # These values match extSrc and are safe for Kobra S1 hardware
+
+  - name: "default_acceleration"
+    value: "18000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "initial_layer_acceleration"
+    value: "6000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "inner_wall_acceleration"
+    value: "18000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "outer_wall_acceleration"
+    value: "7000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "internal_solid_infill_acceleration"
+    value: "18000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "top_surface_acceleration"
+    value: "18000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "travel_acceleration"
+    value: "18000"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # SPEED CATEGORY: Print Speeds
+  # ========================================
+  # Strategy: Keep high speeds for internals/infill (180 mm/s)
+  # Use moderate speeds for outer walls (90 mm/s) for quality
+  # Fast initial layer (70 mm/s) to reduce total print time
+
+  - name: "initial_layer_speed"
+    value: "70"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "outer_wall_speed"
+    value: "90"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "inner_wall_speed"
+    value: "200"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "sparse_infill_speed"
+    value: "200"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "internal_solid_infill_speed"
+    value: "200"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "top_surface_speed"
+    value: "200"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "gap_infill_speed"
+    value: "200"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "travel_speed"
+    value: "500"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # EFFICIENCY CATEGORY: Infill Pattern
+  # ========================================
+  # Adaptive cubic is faster to slice and print than gyroid
+  # Uses less filament in non-critical areas
+  # Trade-off: Slightly weaker than gyroid, but faster
+
+  - name: "sparse_infill_pattern"
+    value: "adaptivecubic"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # QUALITY CATEGORY: Line Widths
+  # ========================================
+  # Slightly wider lines (105% of nozzle diameter) improve flow at high speeds
+  # This scales automatically with nozzle size and layer height
+  # Wall count (wall_loops) not set - user adjustable for strength requirements
+
+  - name: "line_width"
+    value: "105%"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "initial_layer_line_width"
+    value: "125%"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "inner_wall_line_width"
+    value: "107%"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # QUALITY CATEGORY: Shell Layers & Flow
+  # ========================================
+  # More bottom layers for better adhesion at high speeds
+  # Increased flow ratio compensates for high-speed under-extrusion
+
+  - name: "bottom_shell_layers"
+    value: "5"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "bottom_solid_infill_flow_ratio"
+    value: "1.07"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # QUALITY CATEGORY: First Layer
+  # ========================================
+  # Increased elephant foot compensation for aggressive first layer
+
+  - name: "elefant_foot_compensation"
+    value: "0.2"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # QUALITY CATEGORY: Top Surface
+  # ========================================
+  # Monotonic line pattern provides good finish with faster path planning
+  # Alternative: "monotonic" for perfect aesthetic (slightly slower)
+
+  - name: "top_surface_pattern"
+    value: "monotonicline"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # EFFICIENCY CATEGORY: Retraction
+  # ========================================
+  # User preference: reduce_infill_retraction = 1 (fewer retractions, faster)
+  # Trade-off: Slightly more stringing vs faster print times
+
+  - name: "reduce_infill_retraction"
+    value: "1"
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # SAFETY CATEGORY: Jerk Control
+  # ========================================
+  # Set jerk to 0 to let firmware handle it (safer at high speeds)
+
+  - name: "default_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "initial_layer_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "inner_wall_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "outer_wall_jerk"
+    value: "9"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "top_surface_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "travel_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "infill_jerk"
+    value: "0"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  # ========================================
+  # UTILITY CATEGORY: Layer Cooling
+  # ========================================
+  # Enable slow-down layers for better cooling of small layers at high speeds
+
+  - name: "slow_down_layers"
+    value: "1"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
+
+  - name: "sparse_infill_acceleration"
+    value: "18000"
+    add: true
+    conditions:
+      - type: "filepath_glob"
+        pattern: "**/process/**"
